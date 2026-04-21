@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Calligraphy Gallery{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="shell header-row">
+        <div>
+          <a href="/" class="brand">Calligraphy Gallery</a>
+          <p class="subtitle">Local archive browser for practice and reference</p>
+        </div>
+        <nav class="nav">
+          <a href="/">Home</a>
+          <a href="/browse">Browse</a>
+          <form action="/admin/reindex" method="post">
+            <button type="submit" class="link-button">Reindex Archive</button>
+          </form>
+        </nav>
+      </div>
+    </header>
+    <main class="shell">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+  </html>

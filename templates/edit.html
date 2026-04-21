@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ item.display_title }} · Calligraphy Gallery{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <h1>Edit metadata</h1>
+    <a href="/items/{{ item.id }}">Back to item</a>
+  </div>
+  <form action="/admin/items/{{ item.id }}/edit" method="post" class="edit-form">
+    <label>
+      Display title
+      <input type="text" name="display_title" value="{{ item.display_title or '' }}" required>
+    </label>
+    <label>
+      Canonical title
+      <input type="text" name="canonical_title" value="{{ item.canonical_title or '' }}" required>
+    </label>
+    <label>
+      Primary person
+      <input type="text" name="primary_person_name" value="{{ item.primary_person_name or '' }}" placeholder="Unknown">
+    </label>
+
+    <div class="multi-columns">
+      {% for field_name, field_label, selected, choices in [
+        ('script_ids', 'Scripts', relations.scripts, options.scripts),
+        ('period_ids', 'Periods', relations.periods, options.periods),
+        ('theme_ids', 'Themes', relations.themes, options.themes),
+        ('institution_ids', 'Institutions', relations.institutions, options.institutions),
+        ('work_form_ids', 'Work forms', relations.work_forms, options.work_forms)
+      ] %}
+        <fieldset>
+          <legend>{{ field_label }}</legend>
+          {% set selected_ids = selected | map(attribute='id') | list %}
+          {% for option in choices %}
+            <label class="checkbox-row">
+              <input type="checkbox" name="{{ field_name }}" value="{{ option.id }}" {% if option.id in selected_ids %}checked{% endif %}>
+              <span>{{ option.label }}</span>
+            </label>
+          {% endfor %}
+        </fieldset>
+      {% endfor %}
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">Save changes</button>
+      <a href="/items/{{ item.id }}" class="secondary-button">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

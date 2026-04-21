@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Home · Calligraphy Gallery{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Archive</p>
+    <h1>Browse the collection by person, theme, period, or script.</h1>
+    <p class="lede">Development archive root: <code>{{ archive_dir }}</code>. Indexed items: {{ item_count }}.</p>
+  </div>
+  <form class="search-box" action="/browse" method="get">
+    <input type="search" name="q" placeholder="Search titles, people, themes">
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>Recently Viewed</h2>
+    <a href="/browse?sort=recent">Open browse</a>
+  </div>
+  {% if recent %}
+  <div class="card-grid">
+    {% for item in recent %}
+      {% include "partials/item_card.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-state">Open an item to start building recent history.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h2>Most Viewed</h2>
+    <a href="/browse?sort=popular">Open browse</a>
+  </div>
+  {% if popular %}
+  <div class="card-grid">
+    {% for item in popular %}
+      {% include "partials/item_card.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-state">Most-viewed items will appear here after you use the archive.</p>
+  {% endif %}
+</section>
+{% endblock %}

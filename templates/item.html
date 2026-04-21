@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ item.display_title }} · Calligraphy Gallery{% endblock %}
+{% block content %}
+<section class="item-layout">
+  <article class="panel">
+    <div class="item-header">
+      <div>
+        <p class="eyebrow">{{ item.primary_person_name or "Unknown person" }}</p>
+        <h1>{{ item.display_title }}</h1>
+        <p class="lede">{{ item.raw_title }}</p>
+      </div>
+      <div class="header-actions">
+        <a href="/admin/items/{{ item.id }}/edit" class="secondary-button">Edit metadata</a>
+        {% if item.is_deleted %}
+        <form action="/admin/items/{{ item.id }}/restore" method="post">
+          <button type="submit">Restore</button>
+        </form>
+        {% else %}
+        <form action="/admin/items/{{ item.id }}/delete" method="post" onsubmit="return confirm('Soft-delete this item?');">
+          <button type="submit" class="danger">Delete item</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div>
+        <h3>Metadata</h3>
+        <dl class="metadata-list">
+          <dt>Review status</dt>
+          <dd>{{ item.review_status }}</dd>
+          <dt>View count</dt>
+          <dd>{{ item.view_count }}</dd>
+          <dt>Last viewed</dt>
+          <dd>{{ item.last_viewed_at or "Never" }}</dd>
+          <dt>Source labels</dt>
+          <dd>{{ source_labels|join(", ") if source_labels else "None" }}</dd>
+          <dt>Scripts</dt>
+          <dd>{% for relation in relations.scripts %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
+          <dt>Periods</dt>
+          <dd>{% for relation in relations.periods %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
+          <dt>Themes</dt>
+          <dd>{% for relation in relations.themes %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
+          <dt>Institutions</dt>
+          <dd>{% for relation in relations.institutions %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
+        </dl>
+      </div>
+    </div>
+  </article>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2>Images</h2>
+      <span>{{ images|length }} page(s)</span>
+    </div>
+    <div class="image-grid">
+      {% for image in images %}
+        <a href="/items/{{ item.id }}/images/{{ image.id }}" class="image-frame">
+          <img src="/media/images/{{ image.id }}" alt="{{ item.display_title }} page {{ image.page_index }}" loading="lazy">
+          <span>Page {{ image.page_index }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+{% endblock %}

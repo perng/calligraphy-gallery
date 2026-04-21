@@ -1,0 +1,1 @@
+"""Calligraphy gallery application package."""

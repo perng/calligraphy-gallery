@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ item.display_title }} · Page {{ image.page_index }}{% endblock %}
+{% block content %}
+<section class="panel viewer-panel">
+  <div class="panel-header viewer-header">
+    <div>
+      <p class="eyebrow">{{ item.primary_person_name or "Unknown person" }}</p>
+      <h1>{{ item.display_title }}</h1>
+      <p class="lede">Page {{ image.page_index }} of {{ image_count }}</p>
+    </div>
+    <div class="header-actions">
+      <a href="/items/{{ item.id }}" class="secondary-button">Back to item</a>
+      {% if prev_image %}
+      <a href="/items/{{ item.id }}/images/{{ prev_image.id }}" class="secondary-button">Previous</a>
+      {% endif %}
+      {% if next_image %}
+      <a href="/items/{{ item.id }}/images/{{ next_image.id }}" class="secondary-button">Next</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="viewer-stage">
+    <img
+      src="/media/images/{{ image.id }}"
+      alt="{{ item.display_title }} page {{ image.page_index }}"
+      class="viewer-image"
+    >
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Browse · Calligraphy Gallery{% endblock %}
+{% block content %}
+<section class="browse-layout">
+  <aside class="sidebar panel">
+    <h2>Filters</h2>
+    <form action="/browse" method="get" class="filter-form">
+      <label>
+        Search
+        <input type="search" name="q" value="{{ filters.q }}">
+      </label>
+      <label>
+        Person
+        <select name="person">
+          <option value="">Any</option>
+          {% for option in persons %}
+            <option value="{{ option.id }}" {% if filters.person == option.id %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Script
+        <select name="script">
+          <option value="">Any</option>
+          {% for option in scripts %}
+            <option value="{{ option.id }}" {% if filters.script == option.id %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Period
+        <select name="period">
+          <option value="">Any</option>
+          {% for option in periods %}
+            <option value="{{ option.id }}" {% if filters.period == option.id %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Theme
+        <select name="theme">
+          <option value="">Any</option>
+          {% for option in themes %}
+            <option value="{{ option.id }}" {% if filters.theme == option.id %}selected{% endif %}>{{ option.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        Sort
+        <select name="sort">
+          <option value="title" {% if filters.sort == 'title' %}selected{% endif %}>Title</option>
+          <option value="recent" {% if filters.sort == 'recent' %}selected{% endif %}>Recently Viewed</option>
+          <option value="popular" {% if filters.sort == 'popular' %}selected{% endif %}>Most Viewed</option>
+          <option value="updated" {% if filters.sort == 'updated' %}selected{% endif %}>Recently Updated</option>
+        </select>
+      </label>
+      <div class="form-actions">
+        <button type="submit">Apply</button>
+        <a href="/browse" class="secondary-button">Reset</a>
+      </div>
+    </form>
+  </aside>
+
+  <section class="results panel">
+    <div class="panel-header">
+      <h2>Results</h2>
+      <span>{{ items|length }} item(s)</span>
+    </div>
+    {% if items %}
+      <div class="card-grid">
+        {% for item in items %}
+          {% include "partials/item_card.html" %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty-state">No items matched the current filters.</p>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}
