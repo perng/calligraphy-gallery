@@ -1,49 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ item.display_title }} · Calligraphy Gallery{% endblock %}
 {% block content %}
-<section class="item-layout">
-  <article class="panel">
+<section class="item-detail-layout">
+  <article class="panel item-summary">
     <div class="item-header">
       <div>
         <p class="eyebrow">{{ item.primary_person_name or "Unknown person" }}</p>
         <h1>{{ item.display_title }}</h1>
         <p class="lede">{{ item.raw_title }}</p>
-      </div>
-      <div class="header-actions">
-        <a href="/admin/items/{{ item.id }}/edit" class="secondary-button">Edit metadata</a>
-        {% if item.is_deleted %}
-        <form action="/admin/items/{{ item.id }}/restore" method="post">
-          <button type="submit">Restore</button>
-        </form>
-        {% else %}
-        <form action="/admin/items/{{ item.id }}/delete" method="post" onsubmit="return confirm('Soft-delete this item?');">
-          <button type="submit" class="danger">Delete item</button>
-        </form>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="meta-grid">
-      <div>
-        <h3>Metadata</h3>
-        <dl class="metadata-list">
-          <dt>Review status</dt>
-          <dd>{{ item.review_status }}</dd>
-          <dt>View count</dt>
-          <dd>{{ item.view_count }}</dd>
-          <dt>Last viewed</dt>
-          <dd>{{ item.last_viewed_at or "Never" }}</dd>
-          <dt>Source labels</dt>
-          <dd>{{ source_labels|join(", ") if source_labels else "None" }}</dd>
-          <dt>Scripts</dt>
-          <dd>{% for relation in relations.scripts %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
-          <dt>Periods</dt>
-          <dd>{% for relation in relations.periods %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
-          <dt>Themes</dt>
-          <dd>{% for relation in relations.themes %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
-          <dt>Institutions</dt>
-          <dd>{% for relation in relations.institutions %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
-        </dl>
       </div>
     </div>
   </article>
@@ -60,6 +24,42 @@
           <span>Page {{ image.page_index }}</span>
         </a>
       {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel item-bottom-bar">
+    <details class="metadata-disclosure">
+      <summary>Metadata</summary>
+      <dl class="metadata-list metadata-list-compact">
+        <dt>Review status</dt>
+        <dd>{{ item.review_status }}</dd>
+        <dt>View count</dt>
+        <dd>{{ item.view_count }}</dd>
+        <dt>Last viewed</dt>
+        <dd>{{ item.last_viewed_at or "Never" }}</dd>
+        <dt>Source labels</dt>
+        <dd>{{ source_labels|join(", ") if source_labels else "None" }}</dd>
+        <dt>Scripts</dt>
+        <dd>{% for relation in relations.scripts %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
+        <dt>Periods</dt>
+        <dd>{% for relation in relations.periods %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
+        <dt>Themes</dt>
+        <dd>{% for relation in relations.themes %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
+        <dt>Institutions</dt>
+        <dd>{% for relation in relations.institutions %}{{ relation.label }}{% if not loop.last %}, {% endif %}{% else %}None{% endfor %}</dd>
+      </dl>
+    </details>
+    <div class="header-actions bottom-actions">
+      <a href="/admin/items/{{ item.id }}/edit" class="secondary-button">Edit metadata</a>
+      {% if item.is_deleted %}
+      <form action="/admin/items/{{ item.id }}/restore" method="post">
+        <button type="submit">Restore</button>
+      </form>
+      {% else %}
+      <form action="/admin/items/{{ item.id }}/delete" method="post">
+        <button type="submit" class="danger">Delete item</button>
+      </form>
+      {% endif %}
     </div>
   </section>
 </section>

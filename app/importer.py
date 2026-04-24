@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .db import get_connection
+from .db import get_connection, refresh_frequent_persons
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 
@@ -248,7 +248,17 @@ def looks_like_bucket_directory(name: str) -> bool:
 def import_archive(archive_dir: Path, db_path: Path, metadata_json_path: Path | None = None) -> dict[str, int]:
     directories = sorted([path for path in archive_dir.iterdir() if path.is_dir()])
     metadata_index, metadata_duplicates = load_metadata_index(metadata_json_path)
-    stats = {"items": 0, "images": 0, "metadata_matches": 0, "metadata_fallbacks": 0, "metadata_duplicates": metadata_duplicates, "skipped_buckets": 0}
+    stats = {
+        "items": 0,
+        "images": 0,
+        "metadata_matches": 0,
+        "metadata_fallbacks": 0,
+        "metadata_duplicates": metadata_duplicates,
+        "skipped_buckets": 0,
+        "skipped_unmatched": 0,
+        "stale_items_hidden": 0,
+    }
+    imported_directory_paths: set[str] = set()
     with get_connection(db_path) as conn:
         for directory in directories:
             metadata = metadata_index.get(directory.name)
@@ -259,9 +269,13 @@ def import_archive(archive_dir: Path, db_path: Path, metadata_json_path: Path | 
                 if metadata_index and looks_like_bucket_directory(directory.name):
                     stats["skipped_buckets"] += 1
                     continue
+                if metadata_index:
+                    stats["skipped_unmatched"] += 1
+                    continue
                 parsed = parse_title(directory.name)
                 stats["metadata_fallbacks"] += 1
             identifier = item_id(directory)
+            imported_directory_paths.add(str(directory))
             image_files = sorted(
                 [path for path in directory.iterdir() if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS],
                 key=lambda path: path.name,
@@ -278,7 +292,7 @@ def import_archive(archive_dir: Path, db_path: Path, metadata_json_path: Path | 
             if parsed.series:
                 series_id = upsert_label(conn, "series", "series", parsed.series)
 
-            # Preserve manual edits on re-import.
+            # Preserve local history/deletion state. JSON-backed metadata remains authoritative on reindex.
             existing = conn.execute(
                 "SELECT review_status, display_title, canonical_title, primary_person_id, series_id, is_deleted, view_count, last_viewed_at FROM items WHERE directory_path = ?",
                 (str(directory),),
@@ -290,11 +304,11 @@ def import_archive(archive_dir: Path, db_path: Path, metadata_json_path: Path | 
             preserved_view_count = 0
             preserved_last_viewed_at = None
             if existing:
-                review_status = existing["review_status"]
+                review_status = "auto" if metadata else existing["review_status"]
                 preserved_is_deleted = existing["is_deleted"]
                 preserved_view_count = existing["view_count"]
                 preserved_last_viewed_at = existing["last_viewed_at"]
-                if review_status == "edited":
+                if existing["review_status"] == "edited" and not metadata:
                     display_title = existing["display_title"]
                     canonical_title = existing["canonical_title"]
                     primary_person_id = existing["primary_person_id"]
@@ -311,13 +325,14 @@ def import_archive(archive_dir: Path, db_path: Path, metadata_json_path: Path | 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(directory_path) DO UPDATE SET
                   raw_title = excluded.raw_title,
-                  display_title = CASE WHEN items.review_status = 'edited' THEN items.display_title ELSE excluded.display_title END,
-                  canonical_title = CASE WHEN items.review_status = 'edited' THEN items.canonical_title ELSE excluded.canonical_title END,
-                  primary_person_id = CASE WHEN items.review_status = 'edited' THEN items.primary_person_id ELSE excluded.primary_person_id END,
-                  series_id = CASE WHEN items.review_status = 'edited' THEN items.series_id ELSE excluded.series_id END,
+                  display_title = excluded.display_title,
+                  canonical_title = excluded.canonical_title,
+                  primary_person_id = excluded.primary_person_id,
+                  series_id = excluded.series_id,
                   top_level_bucket = excluded.top_level_bucket,
                   source_labels_json = excluded.source_labels_json,
                   image_count = excluded.image_count,
+                  review_status = excluded.review_status,
                   updated_at = CURRENT_TIMESTAMP
                 """,
                 (
@@ -391,4 +406,17 @@ def import_archive(archive_dir: Path, db_path: Path, metadata_json_path: Path | 
                 )
             stats["items"] += 1
             stats["images"] += len(image_files)
+        if metadata_index:
+            existing_paths = [
+                row["directory_path"]
+                for row in conn.execute("SELECT directory_path FROM items WHERE is_deleted = 0").fetchall()
+            ]
+            stale_paths = [path for path in existing_paths if path not in imported_directory_paths]
+            if stale_paths:
+                conn.executemany(
+                    "UPDATE items SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE directory_path = ?",
+                    [(path,) for path in stale_paths],
+                )
+                stats["stale_items_hidden"] = len(stale_paths)
+        refresh_frequent_persons(conn)
     return stats

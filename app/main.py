@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .config import get_settings
-from .db import get_connection, init_db
+from .db import get_connection, init_db, refresh_frequent_persons
 from .importer import import_archive, upsert_label
 
 settings = get_settings()
@@ -110,9 +110,26 @@ def fetch_item_list(
     return conn.execute(sql, params).fetchall()
 
 
-def fetch_options(conn: sqlite3.Connection, table: str) -> list[sqlite3.Row]:
+def truthy_query_value(value: str | None, default: bool = True) -> bool:
+    if value is None:
+        return default
+    return value.lower() not in {"0", "false", "off", "no"}
+
+
+def fetch_options(conn: sqlite3.Connection, table: str, frequent_only: bool = False) -> list[sqlite3.Row]:
     if table == "persons":
-        return conn.execute("SELECT id, display_name AS label FROM persons ORDER BY display_name COLLATE NOCASE ASC").fetchall()
+        frequent_clause = "AND persons.frequent = 1" if frequent_only else ""
+        return conn.execute(
+            f"""
+            SELECT DISTINCT persons.id, persons.display_name AS label, persons.frequent
+            FROM persons
+            JOIN item_persons ON item_persons.person_id = persons.id
+            JOIN items ON items.id = item_persons.item_id
+            WHERE items.is_deleted = 0
+              {frequent_clause}
+            ORDER BY persons.display_name COLLATE NOCASE ASC
+            """
+        ).fetchall()
     return conn.execute(f"SELECT id, label FROM {table} ORDER BY label COLLATE NOCASE ASC").fetchall()
 
 
@@ -220,14 +237,24 @@ def browse(
     period: str | None = None,
     theme: str | None = None,
     sort: str = "title",
+    frequent: str | None = None,
 ):
+    frequent_only = truthy_query_value(frequent)
     with get_connection(settings.db_path) as conn:
         items = fetch_item_list(conn, q=q, person=person, script=script, period=period, theme=theme, sort=sort, limit=100)
         context = {
             "request": request,
             "items": items,
-            "filters": {"q": q or "", "person": person or "", "script": script or "", "period": period or "", "theme": theme or "", "sort": sort},
-            "persons": fetch_options(conn, "persons"),
+            "filters": {
+                "q": q or "",
+                "person": person or "",
+                "script": script or "",
+                "period": period or "",
+                "theme": theme or "",
+                "sort": sort,
+                "frequent": frequent_only,
+            },
+            "persons": fetch_options(conn, "persons", frequent_only=frequent_only),
             "scripts": fetch_options(conn, "scripts"),
             "periods": fetch_options(conn, "periods"),
             "themes": fetch_options(conn, "themes"),
@@ -316,9 +343,6 @@ def edit_item_page(request: Request, item_id: str):
         options = {
             "scripts": fetch_options(conn, "scripts"),
             "periods": fetch_options(conn, "periods"),
-            "themes": fetch_options(conn, "themes"),
-            "institutions": fetch_options(conn, "institutions"),
-            "work_forms": fetch_options(conn, "work_forms"),
         }
     return templates.TemplateResponse(
         request,
@@ -344,9 +368,6 @@ def edit_item_submit(
     primary_person_name: str = Form(""),
     script_ids: list[str] = Form(default=[]),
     period_ids: list[str] = Form(default=[]),
-    theme_ids: list[str] = Form(default=[]),
-    institution_ids: list[str] = Form(default=[]),
-    work_form_ids: list[str] = Form(default=[]),
 ):
     with get_connection(settings.db_path) as conn:
         item = conn.execute("SELECT id FROM items WHERE id = ?", (item_id,)).fetchone()
@@ -369,9 +390,7 @@ def edit_item_submit(
             conn.execute("UPDATE item_persons SET role = 'primary' WHERE item_id = ? AND person_id = ?", (item_id, primary_person_id))
         replace_relations(conn, item_id, "item_scripts", "script_id", script_ids)
         replace_relations(conn, item_id, "item_periods", "period_id", period_ids)
-        replace_relations(conn, item_id, "item_themes", "theme_id", theme_ids)
-        replace_relations(conn, item_id, "item_institutions", "institution_id", institution_ids)
-        replace_relations(conn, item_id, "item_work_forms", "work_form_id", work_form_ids)
+        refresh_frequent_persons(conn)
         payload = json.dumps(
             {
                 "display_title": display_title,
@@ -380,9 +399,6 @@ def edit_item_submit(
                 "primary_person_name": primary_person_name or None,
                 "script_ids": script_ids,
                 "period_ids": period_ids,
-                "theme_ids": theme_ids,
-                "institution_ids": institution_ids,
-                "work_form_ids": work_form_ids,
             },
             ensure_ascii=False,
         )
@@ -395,6 +411,7 @@ def delete_item(item_id: str):
     with get_connection(settings.db_path) as conn:
         conn.execute("UPDATE items SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (item_id,))
         conn.execute("INSERT INTO edit_log (item_id, action, payload_json) VALUES (?, 'delete', '{}')", (item_id,))
+        refresh_frequent_persons(conn)
     return RedirectResponse(url="/browse", status_code=303)
 
 
@@ -403,6 +420,7 @@ def restore_item(item_id: str):
     with get_connection(settings.db_path) as conn:
         conn.execute("UPDATE items SET is_deleted = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (item_id,))
         conn.execute("INSERT INTO edit_log (item_id, action, payload_json) VALUES (?, 'restore', '{}')", (item_id,))
+        refresh_frequent_persons(conn)
     return RedirectResponse(url=f"/items/{item_id}", status_code=303)
 
 
@@ -453,7 +471,9 @@ def api_items(
     theme: str | None = None,
     sort: str = "title",
     limit: int = 50,
+    frequent: str | None = None,
 ):
+    frequent_only = truthy_query_value(frequent)
     with get_connection(settings.db_path) as conn:
         items = fetch_item_list(
             conn,
@@ -466,7 +486,7 @@ def api_items(
             limit=min(max(limit, 1), 200),
         )
         facets = {
-            "persons": [dict(row) for row in fetch_options(conn, "persons")[:50]],
+            "persons": [dict(row) for row in fetch_options(conn, "persons", frequent_only=frequent_only)[:50]],
             "scripts": [dict(row) for row in fetch_options(conn, "scripts")],
             "periods": [dict(row) for row in fetch_options(conn, "periods")],
             "themes": [dict(row) for row in fetch_options(conn, "themes")],
@@ -517,10 +537,11 @@ def api_item_images(item_id: str):
 
 
 @app.get("/api/facets")
-def api_facets():
+def api_facets(frequent: str | None = None):
+    frequent_only = truthy_query_value(frequent)
     with get_connection(settings.db_path) as conn:
         return {
-            "persons": [dict(row) for row in fetch_options(conn, "persons")[:100]],
+            "persons": [dict(row) for row in fetch_options(conn, "persons", frequent_only=frequent_only)[:100]],
             "scripts": [dict(row) for row in fetch_options(conn, "scripts")],
             "periods": [dict(row) for row in fetch_options(conn, "periods")],
             "themes": [dict(row) for row in fetch_options(conn, "themes")],

@@ -18,6 +18,11 @@
           {% endfor %}
         </select>
       </label>
+      <label class="checkbox-row">
+        <input type="hidden" name="frequent" value="0">
+        <input type="checkbox" name="frequent" value="1" {% if filters.frequent %}checked{% endif %}>
+        Frequent
+      </label>
       <label>
         Script
         <select name="script">

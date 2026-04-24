@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS persons (
   id TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,
   normalized_name TEXT NOT NULL UNIQUE,
+  frequent INTEGER NOT NULL DEFAULT 0,
   period_label TEXT,
   notes TEXT
 );
@@ -154,9 +155,44 @@ def connect(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
+def column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    return any(row["name"] == column for row in conn.execute(f"PRAGMA table_info({table})"))
+
+
+def refresh_frequent_persons(conn: sqlite3.Connection, limit: int = 50) -> None:
+    if not column_exists(conn, "persons", "frequent"):
+        return
+    conn.execute("UPDATE persons SET frequent = 0")
+    conn.execute(
+        """
+        UPDATE persons
+        SET frequent = 1
+        WHERE id IN (
+          SELECT primary_person_id
+          FROM items
+          WHERE is_deleted = 0 AND primary_person_id IS NOT NULL
+          GROUP BY primary_person_id
+          ORDER BY COUNT(*) DESC, primary_person_id ASC
+          LIMIT ?
+        )
+        """,
+        (limit,),
+    )
+
+
+def migrate_db(conn: sqlite3.Connection) -> None:
+    if not column_exists(conn, "persons", "frequent"):
+        conn.execute("ALTER TABLE persons ADD COLUMN frequent INTEGER NOT NULL DEFAULT 0")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_persons_frequent_display_name ON persons(frequent, display_name)"
+    )
+    refresh_frequent_persons(conn)
+
+
 def init_db(db_path: Path) -> None:
     with connect(db_path) as conn:
         conn.executescript(SCHEMA)
+        migrate_db(conn)
         conn.commit()
 
 

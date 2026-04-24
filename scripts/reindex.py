@@ -22,6 +22,8 @@ def main() -> None:
         f"(metadata matches: {stats['metadata_matches']}, "
         f"fallbacks: {stats['metadata_fallbacks']}, "
         f"skipped buckets: {stats['skipped_buckets']}, "
+        f"skipped unmatched: {stats['skipped_unmatched']}, "
+        f"stale items hidden: {stats['stale_items_hidden']}, "
         f"duplicate metadata titles: {stats['metadata_duplicates']})"
     )
 

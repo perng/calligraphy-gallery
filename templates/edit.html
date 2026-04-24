@@ -23,10 +23,7 @@
     <div class="multi-columns">
       {% for field_name, field_label, selected, choices in [
         ('script_ids', 'Scripts', relations.scripts, options.scripts),
-        ('period_ids', 'Periods', relations.periods, options.periods),
-        ('theme_ids', 'Themes', relations.themes, options.themes),
-        ('institution_ids', 'Institutions', relations.institutions, options.institutions),
-        ('work_form_ids', 'Work forms', relations.work_forms, options.work_forms)
+        ('period_ids', 'Periods', relations.periods, options.periods)
       ] %}
         <fieldset>
           <legend>{{ field_label }}</legend>

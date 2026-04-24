@@ -11,11 +11,14 @@
     <div class="header-actions">
       <a href="/items/{{ item.id }}" class="secondary-button">Back to item</a>
       {% if prev_image %}
-      <a href="/items/{{ item.id }}/images/{{ prev_image.id }}" class="secondary-button">Previous</a>
+      <a href="/items/{{ item.id }}/images/{{ prev_image.id }}" class="secondary-button" data-viewer-prev>Previous</a>
       {% endif %}
       {% if next_image %}
-      <a href="/items/{{ item.id }}/images/{{ next_image.id }}" class="secondary-button">Next</a>
+      <a href="/items/{{ item.id }}/images/{{ next_image.id }}" class="secondary-button" data-viewer-next>Next</a>
       {% endif %}
+      <form action="/admin/items/{{ item.id }}/delete" method="post">
+        <button type="submit" class="danger">Delete item</button>
+      </form>
     </div>
   </div>
 
@@ -27,4 +30,30 @@
     >
   </div>
 </section>
+<script>
+  (() => {
+    const prevLink = document.querySelector("[data-viewer-prev]");
+    const nextLink = document.querySelector("[data-viewer-next]");
+    const textInputTags = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (activeElement && (textInputTags.has(activeElement.tagName) || activeElement.isContentEditable)) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft" && prevLink) {
+        event.preventDefault();
+        window.location.href = prevLink.href;
+      } else if (event.key === "ArrowRight" && nextLink) {
+        event.preventDefault();
+        window.location.href = nextLink.href;
+      }
+    });
+  })();
+</script>
 {% endblock %}
