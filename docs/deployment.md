@@ -1,6 +1,6 @@
 # Deployment guide — Ubuntu server
 
-This guide covers setting up a fresh Ubuntu 22.04 (or 24.04) machine to run the Calligraphy Gallery app under systemd with Nginx as a reverse proxy.
+This guide covers setting up a fresh Ubuntu 22.04 (or 24.04) machine to run the Calligraphy Gallery app under systemd with Nginx as a reverse proxy, accessed over HTTPS via Tailscale.
 
 ---
 
@@ -19,7 +19,20 @@ python3 --version
 
 ---
 
-## 2. Create a dedicated user
+## 2. Install and connect Tailscale
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+After running `tailscale up`, follow the login URL printed in the terminal to authenticate the machine to your Tailnet. Once connected, note the MagicDNS hostname assigned to this machine (e.g. `happysaurlinux.tail1d9bfd.ts.net`) — you'll use it throughout the rest of this guide.
+
+Enable HTTPS in the Tailscale admin console: **DNS → Enable HTTPS Certificates**.
+
+---
+
+## 3. Create a dedicated user
 
 Running the app as a non-root user limits blast radius if anything goes wrong.
 
@@ -29,7 +42,7 @@ sudo useradd --system --create-home --shell /bin/bash gallery
 
 ---
 
-## 3. Deploy the application
+## 4. Deploy the application
 
 ```bash
 sudo -u gallery git clone https://github.com/your-org/calligraphy-gallery.git /home/gallery/app
@@ -38,22 +51,22 @@ sudo -u gallery python3 -m venv .venv
 sudo -u gallery .venv/bin/pip install -r requirements.txt
 ```
 
-Copy your archive directory and SQLite database to the server, then set ownership:
+Grant the `gallery` user read access to the archive and the data directory:
 
 ```bash
 sudo chown -R gallery:gallery /home/gallery/app/data
-sudo chown -R gallery:gallery /path/to/archive
+sudo chown -R gallery:gallery /mnt/data/Calligraphy_Archive
 ```
 
 ---
 
-## 4. Configure environment variables
+## 5. Configure environment variables
 
 Create `/home/gallery/app/.env`:
 
 ```bash
 sudo -u gallery tee /home/gallery/app/.env <<'EOF'
-CALLIGRAPHY_ARCHIVE_DIR=/path/to/archive
+CALLIGRAPHY_ARCHIVE_DIR=/mnt/data/Calligraphy_Archive
 CALLIGRAPHY_DB_PATH=/home/gallery/app/data/calligraphy.sqlite3
 CALLIGRAPHY_METADATA_JSON_PATH=/home/gallery/app/calligraphy_title_extracted.json
 CALLIGRAPHY_HOST=127.0.0.1
@@ -69,7 +82,7 @@ sudo chmod 600 /home/gallery/app/.env
 
 ---
 
-## 5. Create a systemd service
+## 6. Create a systemd service
 
 Create `/etc/systemd/system/calligraphy-gallery.service`:
 
@@ -110,15 +123,58 @@ journalctl -u calligraphy-gallery -f
 
 ---
 
-## 6. Configure Nginx
+## 7. Provision a TLS certificate via Tailscale
+
+```bash
+sudo tailscale cert happysaurlinux.tail1d9bfd.ts.net
+```
+
+Tailscale stores the cert and key under `/var/lib/tailscale/certs/`. Allow Nginx to read them:
+
+```bash
+sudo chmod 0755 /var/lib/tailscale/certs
+sudo chmod 0644 /var/lib/tailscale/certs/happysaurlinux.tail1d9bfd.ts.net.crt
+sudo chmod 0640 /var/lib/tailscale/certs/happysaurlinux.tail1d9bfd.ts.net.key
+sudo chgrp www-data /var/lib/tailscale/certs/happysaurlinux.tail1d9bfd.ts.net.key
+```
+
+The certificate expires every 90 days. Renew it by re-running `tailscale cert` — add a monthly cron job to keep it fresh:
+
+```bash
+sudo tee /etc/cron.monthly/tailscale-cert <<'EOF'
+#!/bin/sh
+tailscale cert happysaurlinux.tail1d9bfd.ts.net
+EOF
+sudo chmod +x /etc/cron.monthly/tailscale-cert
+```
+
+---
+
+## 8. Open the firewall port
+
+Allow port 8963 through UFW:
+
+```bash
+sudo ufw allow 8963/tcp
+sudo ufw status
+```
+
+If your Tailnet has a custom ACL policy, also confirm port 8963 is permitted in the Tailscale admin console under **Access Controls**.
+
+---
+
+## 9. Configure Nginx
 
 Create `/etc/nginx/sites-available/calligraphy-gallery`:
 
 ```bash
 sudo tee /etc/nginx/sites-available/calligraphy-gallery <<'EOF'
 server {
-    listen 80;
-    server_name your-domain-or-ip;
+    listen 8963 ssl;
+    server_name happysaurlinux.tail1d9bfd.ts.net;
+
+    ssl_certificate     /var/lib/tailscale/certs/happysaurlinux.tail1d9bfd.ts.net.crt;
+    ssl_certificate_key /var/lib/tailscale/certs/happysaurlinux.tail1d9bfd.ts.net.key;
 
     client_max_body_size 50M;
 
@@ -141,20 +197,11 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
----
-
-## 7. (Optional) TLS with Let's Encrypt
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d your-domain.example.com
-```
-
-Certbot edits the Nginx config and sets up automatic renewal.
+The gallery is now accessible at `https://happysaurlinux.tail1d9bfd.ts.net:8963` from any device on your Tailnet.
 
 ---
 
-## 8. Updating the app
+## 10. Updating the app
 
 ```bash
 cd /home/gallery/app
@@ -171,5 +218,7 @@ sudo systemctl restart calligraphy-gallery
 |---|---|
 | App won't start | `journalctl -u calligraphy-gallery -n 50` |
 | Nginx 502 Bad Gateway | App not running — check systemd status |
+| Nginx SSL error | Re-run `tailscale cert` and check file permissions |
 | Images not loading | Verify `CALLIGRAPHY_ARCHIVE_DIR` path and `gallery` user read access |
 | Database errors | Check `CALLIGRAPHY_DB_PATH` exists and is writable by `gallery` |
+| Can't reach the site | Confirm the machine is connected: `tailscale status` |
