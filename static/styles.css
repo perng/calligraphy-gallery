@@ -202,6 +202,7 @@ main.shell { padding: 1.5rem 0 4rem; }
 .viewer-stage {
   display: grid;
   place-items: center;
+  position: relative;
   min-height: 70vh;
   padding: 1rem;
   border: 1px solid var(--line);
@@ -216,7 +217,51 @@ main.shell { padding: 1.5rem 0 4rem; }
       transparent 22px
     );
 }
+.viewer-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  z-index: 2;
+  cursor: pointer;
+}
+.viewer-zone-prev { left: 0; cursor: w-resize; }
+.viewer-zone-next { right: 0; cursor: e-resize; }
+.viewer-zone-exit {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12.5%;
+  z-index: 4;
+  cursor: zoom-out;
+}
+body.viewer-fullscreen .viewer-zone-exit { display: block; }
+body.viewer-fullscreen .site-header { display: none; }
+body.viewer-fullscreen main.shell { padding: 0; }
+body.viewer-fullscreen .viewer-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  margin: 0;
+  border-radius: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.viewer-fullscreen .viewer-header { display: none; }
+body.viewer-fullscreen .viewer-stage {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+  border: 0;
+  padding: 0;
+}
+body.viewer-fullscreen .viewer-image { max-height: 100vh; }
 .viewer-image {
+  position: relative;
+  z-index: 1;
   max-width: 100%;
   max-height: 78vh;
   width: auto;

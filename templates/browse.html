@@ -83,3 +83,6 @@
   </section>
 </section>
 {% endblock %}
+{% block extra_scripts %}
+<script>sessionStorage.setItem("last-search", location.href);</script>
+{% endblock %}

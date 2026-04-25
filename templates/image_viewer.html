@@ -8,6 +8,7 @@
   {% if next_image %}
   <a href="/items/{{ item.id }}/images/{{ next_image.id }}" class="link-button" data-viewer-next>Next</a>
   {% endif %}
+  <button class="link-button" id="fullscreen-btn">Full screen</button>
   <form action="/admin/items/{{ item.id }}/delete" method="post">
     <button type="submit" class="danger">Delete item</button>
   </form>
@@ -25,11 +26,18 @@
   </div>
 
   <div class="viewer-stage">
+    <div class="viewer-zone-exit" id="fullscreen-exit" aria-label="Exit full screen"></div>
+    {% if prev_image %}
+    <a href="/items/{{ item.id }}/images/{{ prev_image.id }}" class="viewer-zone viewer-zone-prev" aria-label="Previous"></a>
+    {% endif %}
     <img
       src="/media/images/{{ image.id }}"
       alt="{{ item.display_title }} page {{ image.page_index }}"
       class="viewer-image"
     >
+    {% if next_image %}
+    <a href="/items/{{ item.id }}/images/{{ next_image.id }}" class="viewer-zone viewer-zone-next" aria-label="Next"></a>
+    {% endif %}
   </div>
 </section>
 <script>
@@ -54,8 +62,36 @@
       } else if (event.key === "ArrowRight" && nextLink) {
         event.preventDefault();
         window.location.href = nextLink.href;
+      } else if (event.key === "Escape") {
+        exitFullscreen();
       }
     });
+
+    function enterFullscreen() {
+      document.body.classList.add("viewer-fullscreen");
+      sessionStorage.setItem("viewer-fullscreen", "1");
+    }
+    function exitFullscreen() {
+      document.body.classList.remove("viewer-fullscreen");
+      sessionStorage.removeItem("viewer-fullscreen");
+    }
+
+    if (sessionStorage.getItem("viewer-fullscreen")) {
+      document.body.classList.add("viewer-fullscreen");
+    }
+
+    const lastSearch = sessionStorage.getItem("last-search");
+    if (lastSearch) {
+      const btn = document.createElement("a");
+      btn.href = lastSearch;
+      btn.className = "link-button";
+      btn.textContent = "Last Search";
+      const backBtn = document.querySelector(".site-header .nav a[href^='/items/']");
+      backBtn.parentNode.insertBefore(btn, backBtn);
+    }
+
+    document.getElementById("fullscreen-btn").addEventListener("click", enterFullscreen);
+    document.getElementById("fullscreen-exit").addEventListener("click", exitFullscreen);
   })();
 </script>
 {% endblock %}
