@@ -62,7 +62,8 @@ code { font-family: "SFMono-Regular", ui-monospace, monospace; }
   cursor: pointer;
   font: inherit;
 }
-.site-header .link-button {
+.site-header .link-button,
+.site-header .nav button {
   padding: 0.3rem 0.6rem;
 }
 button {
@@ -185,8 +186,14 @@ main.shell { padding: 1.5rem 0 4rem; }
   min-height: calc(100vh - 10rem);
 }
 .viewer-header {
-  align-items: start;
+  align-items: center;
+  margin-bottom: 0.5rem;
 }
+.viewer-title-row { display: flex; align-items: baseline; gap: 0.4rem; font-size: 0.85rem; }
+.viewer-artist { text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
+.viewer-title { font-weight: 600; color: var(--ink); }
+.viewer-sep { color: var(--muted); }
+.viewer-page-count { color: var(--muted); }
 .viewer-stage {
   display: grid;
   place-items: center;
