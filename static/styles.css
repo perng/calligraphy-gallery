@@ -96,6 +96,11 @@ main.shell { padding: 1.5rem 0 4rem; }
   font-size: 0.75rem;
   color: var(--accent);
 }
+.eyebrow a, .viewer-artist {
+  color: var(--accent);
+  text-decoration: none;
+}
+.eyebrow a:hover, a.viewer-artist:hover { text-decoration: underline; }
 .search-box { display: flex; gap: 0.75rem; align-items: center; }
 .search-box input, .filter-form input, .filter-form select, .edit-form input, .edit-form select {
   width: 100%;

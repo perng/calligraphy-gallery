@@ -5,7 +5,7 @@
   <article class="panel item-summary">
     <div class="item-header">
       <div>
-        <p class="eyebrow">{{ item.primary_person_name or "Unknown person" }}</p>
+        <p class="eyebrow">{% if item.primary_person_id %}<a href="/browse?person={{ item.primary_person_id }}">{{ item.primary_person_name }}</a>{% else %}Unknown person{% endif %}</p>
         <h1>{{ item.display_title }}</h1>
         <p class="lede">{{ item.raw_title }}</p>
       </div>

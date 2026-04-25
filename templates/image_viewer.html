@@ -16,7 +16,7 @@
 <section class="panel viewer-panel">
   <div class="panel-header viewer-header">
     <div class="viewer-title-row">
-      <span class="viewer-artist">{{ item.primary_person_name or "Unknown person" }}</span>
+      {% if item.primary_person_id %}<a href="/browse?person={{ item.primary_person_id }}" class="viewer-artist">{{ item.primary_person_name }}</a>{% else %}<span class="viewer-artist">Unknown person</span>{% endif %}
       <span class="viewer-sep">·</span>
       <span class="viewer-title">{{ item.display_title }}</span>
       <span class="viewer-sep">·</span>
