@@ -228,16 +228,15 @@ main.shell { padding: 1.5rem 0 4rem; }
 .viewer-zone-prev { left: 0; cursor: w-resize; }
 .viewer-zone-next { right: 0; cursor: e-resize; }
 .viewer-zone-exit {
-  display: none;
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 12.5%;
   z-index: 4;
-  cursor: zoom-out;
+  cursor: zoom-in;
 }
-body.viewer-fullscreen .viewer-zone-exit { display: block; }
+body.viewer-fullscreen .viewer-zone-exit { cursor: zoom-out; }
 body.viewer-fullscreen .site-header { display: none; }
 body.viewer-fullscreen main.shell { padding: 0; }
 body.viewer-fullscreen .viewer-panel {

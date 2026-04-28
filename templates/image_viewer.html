@@ -8,7 +8,6 @@
   {% if next_image %}
   <a href="/items/{{ item.id }}/images/{{ next_image.id }}" class="link-button" data-viewer-next>Next</a>
   {% endif %}
-  <button class="link-button" id="fullscreen-btn">Full screen</button>
   <form action="/admin/items/{{ item.id }}/delete" method="post">
     <button type="submit" class="danger">Delete item</button>
   </form>
@@ -63,17 +62,17 @@
         event.preventDefault();
         window.location.href = nextLink.href;
       } else if (event.key === "Escape") {
-        exitFullscreen();
+        toggleFullscreen();
       }
     });
 
-    function enterFullscreen() {
-      document.body.classList.add("viewer-fullscreen");
-      sessionStorage.setItem("viewer-fullscreen", "1");
-    }
-    function exitFullscreen() {
-      document.body.classList.remove("viewer-fullscreen");
-      sessionStorage.removeItem("viewer-fullscreen");
+    function toggleFullscreen() {
+      const isFullscreen = document.body.classList.toggle("viewer-fullscreen");
+      if (isFullscreen) {
+        sessionStorage.setItem("viewer-fullscreen", "1");
+      } else {
+        sessionStorage.removeItem("viewer-fullscreen");
+      }
     }
 
     if (sessionStorage.getItem("viewer-fullscreen")) {
@@ -90,8 +89,7 @@
       backBtn.parentNode.insertBefore(btn, backBtn);
     }
 
-    document.getElementById("fullscreen-btn").addEventListener("click", enterFullscreen);
-    document.getElementById("fullscreen-exit").addEventListener("click", exitFullscreen);
+    document.getElementById("fullscreen-exit").addEventListener("click", toggleFullscreen);
   })();
 </script>
 {% endblock %}
